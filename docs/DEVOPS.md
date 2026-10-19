@@ -11,7 +11,7 @@ git remote add origin https://github.com/SU_USUARIO/SU_REPOSITORIO.git
 git push -u origin main
 ```
 
-El workflow ejecuta lint y PHPUnit contra MariaDB de laboratorio en un runner Ubuntu, con PHP 8.0 y 8.3. El contenedor de base es exclusivo del CI remoto; no se instala Docker ni se usa para ejecutar el sistema principal en Windows. Las versiones de actions están fijadas por versión mayor; un repositorio público debe revisar periódicamente sus actualizaciones y puede fijarlas por SHA conforme a su política.
+El workflow prepara MariaDB nativo en un directorio temporal del runner Ubuntu y escucha solo en 127.0.0.1:3307, sin Docker. Ejecuta lint y PHPUnit con PHP 8.0 y 8.3 y cierra el proceso temporal al finalizar. La cuenta root vacía solo existe en ese laboratorio efímero con escucha loopback. Las versiones de actions están fijadas por versión mayor; un repositorio público debe revisar periódicamente sus actualizaciones y puede fijarlas por SHA conforme a su política. Este workflow está preparado; no se ejecutó un runner remoto durante la entrega.
 
 ## Jenkins
 

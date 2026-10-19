@@ -8,15 +8,6 @@ jobs:
     strategy:
       matrix:
         php: ['8.0', '8.3']
-    services:
-      mariadb:
-        image: mariadb:10.11
-        env:
-          MARIADB_ROOT_PASSWORD: ci_only_password
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="healthcheck.sh --connect --innodb_initialized"
-          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -26,11 +17,24 @@ jobs:
           coverage: none
           tools: composer:v2
       - run: composer install --prefer-dist --no-interaction
+      - name: MariaDB nativo en base temporal, sin Docker
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mariadb-server mariadb-client
+          mariadb-install-db --datadir="$RUNNER_TEMP/northwind-db" --auth-root-authentication-method=normal --skip-test-db
+          mariadbd --no-defaults --datadir="$RUNNER_TEMP/northwind-db" --socket="$RUNNER_TEMP/northwind.sock" --pid-file="$RUNNER_TEMP/northwind.pid" --port=3307 --bind-address=127.0.0.1 --log-error="$RUNNER_TEMP/northwind-db.log" &
+          for attempt in $(seq 1 30); do
+            if mariadb-admin --host=127.0.0.1 --port=3307 --user=root ping --silent; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/northwind-db.log"
+          exit 1
       - name: Configure isolated environment
         shell: bash
         run: |
           cp config/environments/testing.env.example .env.testing
-          echo 'DB_PASSWORD=ci_only_password' >> .env.testing
+          echo 'DB_PORT=3307' >> .env.testing
           php -r 'echo "APP_KEY=".bin2hex(random_bytes(32)).PHP_EOL;' >> .env.testing
       - run: php tools/console.php install
         env:
@@ -42,3 +46,6 @@ jobs:
         with:
           name: phpunit-${{ matrix.php }}
           path: build/phpunit.xml
+      - name: Cerrar MariaDB temporal
+        if: always()
+        run: mariadb-admin --host=127.0.0.1 --port=3307 --user=root shutdown || true
