@@ -1,0 +1,44 @@
+name: PHP MVC checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.0', '8.3']
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci_only_password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, dom, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - run: composer install --prefer-dist --no-interaction
+      - name: Configure isolated environment
+        shell: bash
+        run: |
+          cp config/environments/testing.env.example .env.testing
+          echo 'DB_PASSWORD=ci_only_password' >> .env.testing
+          php -r 'echo "APP_KEY=".bin2hex(random_bytes(32)).PHP_EOL;' >> .env.testing
+      - run: php tools/console.php install
+        env:
+          APP_ENV_FILE: .env.testing
+      - run: composer lint
+      - run: php vendor/bin/phpunit --log-junit build/phpunit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phpunit-${{ matrix.php }}
+          path: build/phpunit.xml

@@ -1,0 +1,6 @@
+CustomerID,CompanyName,ContactName,City,Country,Phone
+ALFKI,Empresa duplicada,Contacto,Lima,Peru,123
+abc,,Nombre,Lima,Peru,123
+PE099,Esta empresa tiene un nombre demasiado largo para Northwind,Contacto,Lima,Peru,123
+PE098,Empresa repetida,Ana,Lima,Peru,123
+PE098,Empresa repetida,Ana,Lima,Peru,123

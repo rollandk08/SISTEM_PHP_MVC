@@ -1,0 +1,60 @@
+---
+- name: Configurar servidor educativo Debian
+  hosts: northwind_lab
+  become: true
+  vars:
+    release_source: /ruta/local/release/
+    application_root: /var/www/northwind
+  tasks:
+    - name: Instalar pila PHP sin contenedores
+      ansible.builtin.apt:
+        name: [apache2, php, libapache2-mod-php, php-mysql, php-mbstring, mariadb-server]
+        update_cache: true
+        state: present
+    - name: Crear directorio de aplicación
+      ansible.builtin.file:
+        path: '{{ application_root }}'
+        state: directory
+        owner: root
+        group: www-data
+        mode: '0750'
+    - name: Copiar release preparada sin secretos ni datos de ejecución
+      ansible.builtin.copy:
+        src: '{{ release_source }}'
+        dest: '{{ application_root }}/'
+        owner: root
+        group: www-data
+        directory_mode: '0750'
+        mode: '0640'
+    - name: Crear storage escribible por PHP
+      ansible.builtin.file:
+        path: '{{ application_root }}/storage'
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0700'
+    - name: Instalar vhost
+      ansible.builtin.copy:
+        dest: /etc/apache2/sites-available/northwind.conf
+        mode: '0644'
+        content: |
+          <VirtualHost *:80>
+            ServerName northwind.lab
+            DocumentRoot {{ application_root }}/public
+            <Directory {{ application_root }}/public>
+              Options -Indexes
+              AllowOverride All
+              Require all granted
+            </Directory>
+          </VirtualHost>
+      notify: Recargar Apache
+    - name: Activar sitio
+      ansible.builtin.command: a2ensite northwind.conf
+      args:
+        creates: /etc/apache2/sites-enabled/northwind.conf
+      notify: Recargar Apache
+  handlers:
+    - name: Recargar Apache
+      ansible.builtin.service:
+        name: apache2
+        state: reloaded

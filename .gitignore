@@ -1,0 +1,10 @@
+/.env
+/.env.testing
+/.env.production
+/vendor/
+/storage/*
+!/storage/.htaccess
+!/storage/.gitkeep
+/build/
+/.phpunit.result.cache
+/docs/material-extraido.txt

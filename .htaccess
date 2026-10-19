@@ -1,0 +1,10 @@
+Options -Indexes
+# Perfil local XAMPP. El ejemplo de hosting debe sustituir esta regla tras autorizar publicación.
+Require local
+RewriteEngine On
+RewriteRule (^|/)\. - [F,L]
+RewriteRule ^$ public/ [R=302,L]
+RewriteRule ^(app|config|database|migrations|storage|tests|tools|docs|vendor|deploy|\.git)(/|$) - [F,L,NC]
+<FilesMatch "(^\.|composer\.(json|lock)$|phpunit\.xml$|Jenkinsfile$)">
+Require all denied
+</FilesMatch>

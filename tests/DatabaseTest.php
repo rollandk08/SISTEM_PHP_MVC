@@ -1,0 +1,14 @@
+<?php
+declare(strict_types=1);
+use PHPUnit\Framework\TestCase;
+use App\Core\Database;
+use App\Models\Catalog;
+final class DatabaseTest extends TestCase {
+    public function testSourceCountsAndDiscounts(): void {$pdo=Database::connection();foreach(['Customers'=>93,'Orders'=>830,'Order Details'=>2155,'Products'=>77,'Suppliers'=>29] as $t=>$n)$this->assertSame($n,(int)$pdo->query('SELECT COUNT(*) FROM `'.$t.'`')->fetchColumn(),$t);$this->assertSame('1265793.04',$pdo->query('SELECT ROUND(SUM(UnitPrice*Quantity*(1-Discount)),2) FROM `Order Details`')->fetchColumn());}
+    public function testAllOriginalForeignKeysExist(): void {$this->assertSame(13,(int)Database::connection()->query("SELECT COUNT(*) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME NOT LIKE 'app_%'")->fetchColumn());}
+    public function testCountryFilterAndInjectionStayParameterized(): void {$m=new Catalog('clientes');$rows=$m->listing(['filter'=>'Germany'],true)['rows'];$this->assertNotEmpty($rows);foreach($rows as $r)$this->assertSame('Germany',$r['Country']);$this->assertSame(0,$m->listing(['filter'=>"Germany' OR 1=1 --"])['total']);$this->assertSame(0,$m->listing(['q'=>"' OR 1=1 --"])['total']);}
+    public function testCrudAndRollbackPreserveOriginalData(): void {$pdo=Database::connection();$pdo->beginTransaction();try{$m=new Catalog('clientes');$id=$m->insert(['CustomerID'=>'TST99','CompanyName'=>'Test empresa']);$this->assertSame('Test empresa',$m->find($id)['CompanyName']);$m->update($id,['CompanyName'=>'Modificada']);$this->assertSame('Modificada',$m->find($id)['CompanyName']);$m->delete($id);$this->assertSame(0,$m->listing(['q'=>'TST99'])['total']);}finally{$pdo->rollBack();}}
+    public function testReferencedCustomersCannotBeDeleted(): void {$pdo=Database::connection();$pdo->beginTransaction();try{ $this->expectException(PDOException::class);(new Catalog('clientes'))->delete('ALFKI');}finally{$pdo->rollBack();}}
+    public function testTransactionsRollbackOnFailure(): void {$pdo=Database::connection();try{Database::transaction(function($pdo){$pdo->exec("INSERT INTO Categories(CategoryName) VALUES('Rollback')");throw new RuntimeException('fallo controlado');});}catch(RuntimeException $e){}$this->assertSame(0,(int)$pdo->query("SELECT COUNT(*) FROM Categories WHERE CategoryName='Rollback'")->fetchColumn());}
+    public function testBitFieldsInProductCrud(): void {$pdo=Database::connection();$pdo->beginTransaction();try{$m=new Catalog('productos');$id=$m->insert(['ProductName'=>'Prueba bit','Discontinued'=>'0']);$this->assertSame(0,(int)$m->find($id)['Discontinued']);$m->update($id,['Discontinued'=>'1']);$this->assertSame(1,(int)$m->find($id)['Discontinued']);$m->update($id,['Discontinued'=>'0']);$this->assertSame(0,(int)$m->find($id)['Discontinued']);}finally{$pdo->rollBack();}}
+}

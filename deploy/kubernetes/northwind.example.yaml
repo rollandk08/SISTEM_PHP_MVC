@@ -1,0 +1,51 @@
+# Ejemplo de estudio. No aplicar sin imagen, Secret, PVC y BD propios autorizados.
+# La imagen debe incluir release, PHP 8/PDO MySQL/mbstring, Apache con raíz public/,
+# usuario uid=1000 y escucha 8080. No se crea ni descarga ninguna imagen aquí.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: northwind-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: northwind-demo}
+  template:
+    metadata:
+      labels: {app: northwind-demo}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: php-mvc
+          image: REEMPLAZAR_POR_IMAGEN_PROPIA_PHP_PDO:version
+          ports: [{containerPort: 8080}]
+          env:
+            - {name: APP_ENV_FILE, value: /run/northwind/.env}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /index.php?r=login, port: 8080}
+            initialDelaySeconds: 5
+          volumeMounts:
+            - {name: configuration, mountPath: /run/northwind, readOnly: true}
+            - {name: storage, mountPath: /var/www/northwind/storage}
+      volumes:
+        - name: configuration
+          secret: {secretName: northwind-demo-env}
+        - name: storage
+          persistentVolumeClaim: {claimName: northwind-demo-storage}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: northwind-demo
+spec:
+  type: ClusterIP
+  selector: {app: northwind-demo}
+  ports: [{port: 80, targetPort: 8080}]
