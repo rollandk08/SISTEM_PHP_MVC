@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Core\{Controller,Database,HttpException};
 use App\Models\User;
 use App\Services\AuditService;
+
 final class AuthController extends Controller {
     public function form(): void { $this->view('auth/login',['title'=>'Iniciar sesión','error'=>null]); }
     public function login(): void {
