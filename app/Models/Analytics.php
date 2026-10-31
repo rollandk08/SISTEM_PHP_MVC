@@ -12,14 +12,4 @@ final class Analytics {
         $q=Database::connection()->prepare('SELECT c.CustomerID,c.CompanyName,c.Country,COUNT(DISTINCT o.OrderID) AS OrdersCount,ROUND(SUM(d.UnitPrice*d.Quantity*(1-d.Discount)),2) AS Sales FROM Customers c JOIN Orders o ON o.CustomerID=c.CustomerID JOIN `Order Details` d ON d.OrderID=o.OrderID'.($where?' WHERE '.implode(' AND ',$where):'').' GROUP BY c.CustomerID,c.CompanyName,c.Country ORDER BY Sales DESC');$q->execute($args);return $q->fetchAll();
     }
 
-
-    public function buscarPorPais(string $pais): array {
-        $sql = "SELECT CustomerID, CompanyName, Country FROM Customers Where Country = :pais"; 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt-> exucute(['pais' => $pais]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-
-
 }
